@@ -3,19 +3,1104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Моё мини-приложение</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Вертикальный Видеоплеер со свайпом</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        .video-player-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            border-radius: 0;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+        }
+        
+        .video-item, .ad-item {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .ad-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a1a1a;
+        }
+        .ad-content .ad-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .main-play-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s ease;
+        }
+        
+        .main-play-center i {
+            font-size: 2.5em;
+            color: #fff;
+        }
+
+        .top-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+        }
+
+        .profile-icon {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .controls-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0));
+        }
+
+        .video-title-display {
+            position: absolute;
+            bottom: 120px;
+            left: 20px;
+            font-size: 1em;
+            font-weight: bold;
+            color: #fff;
+            z-index: 11;
+        }
+
+        .timeline-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .current-time, .total-time {
+            font-size: 0.8em;
+            width: 40px;
+            text-align: center;
+        }
+        
+        .total-time {
+            margin-left: 10px;
+        }
+
+        .timeline {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+
+        .timeline::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .timeline::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .bottom-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .left-controls, .right-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .look-now-button {
+            background-color: #fff;
+            color: #000;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+            text-decoration: none;
+        }
+        
+        .look-now-button:hover {
+            transform: scale(1.05);
+        }
+
+        .control-button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .control-button:hover {
+            color: #ccc;
+        }
+        
+        /* Дополнительный стиль для отображения названия вместо кнопки */
+        .no-button-title {
+            padding: 12px 25px;
+            font-size: 1em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* ----- Модальные окна ----- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Модальное окно выбора роли */
+        #role-selection-modal .modal-content {
+            width: 80%;
+            max-width: 400px;
+            padding: 40px 25px;
+            background-color: #1a1a1a;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            animation: fadeIn 0.3s ease-out;
+        }
+        #role-selection-modal .modal-content h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        .role-button {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        .role-button.user {
+            background-color: #333;
+            color: #fff;
+        }
+        .role-button.user:hover {
+            background-color: #555;
+            transform: scale(1.05);
+        }
+        .role-button.pro {
+            background-color: #1db954;
+            color: #fff;
+        }
+        .role-button.pro:hover {
+            background-color: #1ed760;
+            transform: scale(1.05);
+        }
+
+        /* Основное модальное окно */
+        .modal-content {
+            background-color: #1a1a1a;
+            padding: 0;
+            border-radius: 0;
+            width: 100vw;
+            max-width: none;
+            height: 100vh;
+            max-height: none;
+            position: relative;
+            box-shadow: none;
+            animation: fadeIn 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(0); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 25px 25px 0;
+        }
+        .profile-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            background-color: #333;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            color: #fff;
+        }
+        .profile-name {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .divider {
+            height: 1px;
+            background-color: #444;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            margin: 0 25px 20px;
+        }
+        .close-button {
+            background-color: #e53935;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Стили для вкладок и списков... (оставлены без изменений) */
+        .tabs { display: flex; gap: 15px; margin-bottom: 20px; padding: 0 25px; }
+        .tabs button { background: none; border: none; color: #888; font-size: 1em; cursor: pointer; transition: color 0.2s, border-bottom 0.2s; padding: 5px 0; position: relative; }
+        .tabs button.active { color: #fff; }
+        .tabs button.active::after { content: ''; position: absolute; left: 0; bottom: -5px; width: 100%; height: 2px; background-color: #fff; }
+        .tab-content { display: none; flex-direction: column; gap: 20px; flex-grow: 1; overflow-y: auto; }
+        .tab-content.active { display: flex; }
+        .tab-content-inner { flex-grow: 1; padding: 0 25px 25px; overflow-y: auto; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+        .form-group input, .form-group select, .form-group textarea { background-color: #333; border: 1px solid #555; color: #fff; padding: 10px; border-radius: 8px; font-size: 1em; }
+        .submit-button { background-color: #1db954; color: #fff; border: none; padding: 15px; border-radius: 50px; font-size: 1em; font-weight: bold; cursor: pointer; transition: background-color 0.2s; width: 100%; }
+        .submit-button:hover { background-color: #1ed760; }
+        .item-list { display: flex; flex-direction: column; gap: 15px; }
+        .list-item { background-color: #282828; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .list-item.inactive { opacity: 0.5; text-decoration: line-through; }
+        .list-item-info { display: flex; flex-direction: column; flex-grow: 1; }
+        .list-item-title { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .list-item-url { font-size: 0.8em; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-actions { display: flex; gap: 10px; }
+        .item-actions button { background: none; border: none; color: #888; font-size: 1.2em; cursor: pointer; transition: color 0.2s; }
+        .item-actions button.active { color: #1db954; }
+        .item-actions button:hover { color: #fff; }
+        .inner-tabs { display: flex; gap: 10px; margin-bottom: 20px; padding: 0 25px; border-bottom: 1px solid #444; }
+        .inner-tabs button { background: none; border: none; color: #888; font-size: 0.9em; cursor: pointer; padding: 10px 0; position: relative; }
+        .inner-tabs button.active { color: #fff; }
+        .inner-tabs button.active::after { content: ''; position: absolute; left: 0; bottom: -1px; width: 100%; height: 2px; background-color: #fff; }
+        .dynamic-form-content { display: none; }
+        .dynamic-form-content.active { display: block; }
+        .inner-tab-content { display: none; }
+        .inner-tab-content.active { display: flex; flex-direction: column; gap: 20px; }
+        #edit-modal { display: none; position: fixed; z-index: 1100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px); justify-content: center; align-items: center; }
+        #edit-modal .modal-content { width: 90%; max-width: 500px; height: auto; max-height: 90vh; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 25px; background-color: #1a1a1a; overflow-y: auto; }
+        #edit-modal .modal-content .modal-header { padding: 0; }
+        
+        /* Стили для профиля обычного пользователя */
+        .history-list {
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background-color: #282828;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .history-item img {
+            width: 80px;
+            height: 45px;
+            border-radius: 5px;
+        }
+        .history-item-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .history-item-title {
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Привет! 🚀</h1>
-        <p>Сайт успешно запущен на Vercel</p>
-    </header>
 
-    <main>
-        <button id="testButton">Нажми меня</button>
-    </main>
+    <div class="video-player-container" id="player-container">
+        </div>
 
-    <script src="script.js"></script>
+    <div class="top-controls">
+        <button class="profile-icon" id="profile-icon"><i class="fas fa-user-circle"></i></button>
+    </div>
+
+    <div id="role-selection-modal" class="modal">
+        <div class="modal-content">
+            <h2>Выберите тип пользователя</h2>
+            <button class="role-button user" id="user-role-btn">Пользователь</button>
+            <button class="role-button pro" id="pro-user-role-btn">Про Пользователь</button>
+        </div>
+    </div>
+    
+    <div id="user-profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="profile-info">
+                    <div class="profile-avatar"><i class="fas fa-user"></i></div>
+                    <span class="profile-name">Обычный пользователь</span>
+                </div>
+                <button class="close-button" id="close-user-profile-btn">X</button>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="tab-content-inner">
+                <div class="history-list" id="watch-history-list">
+                    <p style="text-align: center; color: #888;">История просмотра пуста</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pro-profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="profile-info">
+                    <div class="profile-avatar"><i class="fas fa-user"></i></div>
+                    <span class="profile-name">Про Пользователь</span>
+                </div>
+                <button class="close-button" id="close-pro-profile-btn">X</button>
+            </div>
+            
+            <div class="divider"></div>
+
+            <div class="tabs">
+                <button class="tab-button active" data-tab-target="video-section">Видео</button>
+                <button class="tab-button" data-tab-target="ads-section">Реклама</button>
+            </div>
+            
+            <div id="video-section" class="tab-content active">
+                <div class="inner-tabs">
+                    <button class="inner-tab-button active" data-tab-content-target="add-video-content">Добавить видео</button>
+                    <button class="inner-tab-button" data-tab-content-target="all-videos-content">Все видео</button>
+                </div>
+                <div class="tab-content-inner">
+                    <div id="add-video-content" class="inner-tab-content active">
+                        <div class="form-group">
+                            <label for="video-title">Название видео</label>
+                            <input type="text" id="video-title" placeholder="Введите название">
+                        </div>
+                        <div class="form-group">
+                            <label for="video-file">Выберите видео из устройства</label>
+                            <input type="file" id="video-file" accept="video/*">
+                        </div>
+                        <div class="form-group">
+                            <label for="button-name">Название кнопки (необязательно)</label>
+                            <input type="text" id="button-name" placeholder="Например, 'Перейти'">
+                        </div>
+                        <div class="form-group">
+                            <label for="button-link">Ссылка на кнопку (необязательно)</label>
+                            <input type="url" id="button-link" placeholder="https://example.com/page">
+                        </div>
+                        <button class="submit-button" id="publish-video-btn">Опубликовать видео</button>
+                    </div>
+                    <div id="all-videos-content" class="inner-tab-content">
+                        <div class="item-list" id="all-videos-list">
+                            <p style="text-align: center; color: #888;">Список видео пуст</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="ads-section" class="tab-content">
+                <div class="inner-tabs">
+                    <button class="inner-tab-button active" data-tab-content-target="add-ad-content">Добавить рекламу</button>
+                    <button class="inner-tab-button" data-tab-content-target="all-ads-content">Рекламы</button>
+                </div>
+                <div class="tab-content-inner">
+                    <div id="add-ad-content" class="inner-tab-content active">
+                        <div class="form-group">
+                            <label for="ad-type">Выберите тип рекламы</label>
+                            <select id="ad-type">
+                                <option value="video">Видео</option>
+                                <option value="image">Изображение</option>
+                                <option value="html">HTML-код</option>
+                            </select>
+                        </div>
+                        
+                        <div id="ad-form-video" class="dynamic-form-content active">
+                            <div class="form-group">
+                                <label for="ad-video-file">Выберите видео из устройства</label>
+                                <input type="file" id="ad-video-file" accept="video/*">
+                            </div>
+                            <div class="form-group">
+                                <label for="ad-video-description">Название/описание</label>
+                                <input type="text" id="ad-video-description" placeholder="Краткое описание рекламы">
+                            </div>
+                            <div class="form-group">
+                                <label for="ad-video-button-text">Текст кнопки (необязательно)</label>
+                                <input type="text" id="ad-video-button-text" placeholder="Например, 'Перейти'">
+                            </div>
+                            <div class="form-group">
+                                <label for="ad-video-link">Ссылка на кнопку (необязательно)</label>
+                                <input type="url" id="ad-video-link" placeholder="https://example.com/page">
+                            </div>
+                        </div>
+
+                        <div id="ad-form-image" class="dynamic-form-content">
+                            <div class="form-group">
+                                <label for="ad-image-file">Выберите изображение из устройства</label>
+                                <input type="file" id="ad-image-file" accept="image/*">
+                            </div>
+                            <div class="form-group">
+                                <label for="ad-image-description">Название/описание</label>
+                                <input type="text" id="ad-image-description" placeholder="Краткое описание рекламы">
+                            </div>
+                             <div class="form-group">
+                                <label for="ad-image-button-text">Текст кнопки (необязательно)</label>
+                                <input type="text" id="ad-image-button-text" placeholder="Например, 'Перейти'">
+                            </div>
+                            <div class="form-group">
+                                <label for="ad-image-link">Ссылка на кнопку (необязательно)</label>
+                                <input type="url" id="ad-image-link" placeholder="https://example.com/page">
+                            </div>
+                        </div>
+
+                        <div id="ad-form-html" class="dynamic-form-content">
+                             <div class="form-group">
+                                <label for="ad-html-code">HTML-код рекламы</label>
+                                <textarea id="ad-html-code" rows="5" placeholder="Введите HTML-код здесь..."></textarea>
+                            </div>
+                        </div>
+
+                        <button class="submit-button" id="add-ad-btn">Добавить рекламу</button>
+                    </div>
+                    <div id="all-ads-content" class="inner-tab-content">
+                        <div class="item-list" id="all-ads-list">
+                            <p style="text-align: center; color: #888;">Список рекламы пуст</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="profile-name" id="edit-modal-title">Редактировать</span>
+                <button class="close-button" id="close-edit-modal-btn">X</button>
+            </div>
+            <div id="edit-modal-form">
+                </div>
+            <button class="submit-button" id="save-edit-btn">Сохранить</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Данные для хранения видео и рекламы ---
+        let videosData = [
+            { id: 1, title: 'Видео 1', src: 'https://www.w3schools.com/html/mov_bbb.mp4', file: null, buttonName: 'Смотреть сейчас', buttonLink: '#', type: 'video' },
+            { id: 2, title: 'Видео 2', src: 'https://assets.mixkit.co/videos/preview/mixkit-little-child-is-looking-at-something-1941-small.mp4', file: null, buttonName: 'Подробнее', buttonLink: 'https://example.com', type: 'video' },
+            { id: 3, title: 'Видео 3', src: 'https://assets.mixkit.co/videos/preview/mixkit-woman-sitting-on-the-bed-and-eating-a-bowl-of-cereals-1049-small.mp4', file: null, buttonName: 'Магазин', buttonLink: 'https://shop.example.com', type: 'video' },
+        ];
+        let adsData = [
+            { id: 1, title: 'Реклама 1', subtitle: 'Тип: Видео', type: 'ad', adType: 'video', src: 'https://assets.mixkit.co/videos/preview/mixkit-woman-with-a-dog-on-a-leash-walking-on-a-footpath-4940-small.mp4', file: null, isActive: true, buttonName: 'Перейти', buttonLink: '#' },
+        ];
+        let historyData = [
+            { id: 1, title: 'Видео 1', thumbnail: 'https://via.placeholder.com/160x90/000000/FFFFFF?text=Thumb+1' },
+            { id: 2, title: 'Видео 2', thumbnail: 'https://via.placeholder.com/160x90/000000/FFFFFF?text=Thumb+2' },
+        ];
+
+
+        // --- Основные элементы и их логика ---
+        const playerContainer = document.getElementById('player-container');
+        const profileIcon = document.getElementById('profile-icon');
+        const roleSelectionModal = document.getElementById('role-selection-modal');
+        const userRoleBtn = document.getElementById('user-role-btn');
+        const proUserRoleBtn = document.getElementById('pro-user-role-btn');
+        const userProfileModal = document.getElementById('user-profile-modal');
+        const closeUserModalBtn = document.getElementById('close-user-profile-btn');
+        const proProfileModal = document.getElementById('pro-profile-modal');
+        const closeProModalBtn = document.getElementById('close-pro-profile-btn');
+        const videoList = document.getElementById('all-videos-list');
+        const adList = document.getElementById('all-ads-list');
+        const watchHistoryList = document.getElementById('watch-history-list');
+        const publishVideoBtn = document.getElementById('publish-video-btn');
+        const addAdBtn = document.getElementById('add-ad-btn');
+        const adTypeSelect = document.getElementById('ad-type');
+        const adForms = document.querySelectorAll('.dynamic-form-content');
+        const editModal = document.getElementById('edit-modal');
+        const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+        const editModalForm = document.getElementById('edit-modal-form');
+        const saveEditBtn = document.getElementById('save-edit-btn');
+        let currentEditItem = { type: null, index: null };
+
+        // Функция для смешивания видео и рекламы
+        function getCombinedItems() {
+            const combined = [];
+            let adIndex = 0;
+            videosData.forEach((video) => {
+                combined.push(video);
+                if (combined.length % 5 === 0 && adsData[adIndex] && adsData[adIndex].isActive) {
+                    combined.push(adsData[adIndex]);
+                    adIndex++;
+                }
+            });
+            return combined;
+        }
+
+        // Рендеринг плеера
+        function renderPlayer() {
+            playerContainer.innerHTML = '';
+            const combinedItems = getCombinedItems();
+            combinedItems.forEach((item) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = item.type === 'video' ? 'video-item' : 'ad-item';
+
+                if (item.type === 'video') {
+                    const videoSrc = item.file ? URL.createObjectURL(item.file) : item.src;
+                    
+                    let bottomControlsHtml = '';
+                    if (item.buttonName && item.buttonLink) {
+                        bottomControlsHtml = `
+                            <a href="${item.buttonLink}" target="_blank" class="look-now-button">${item.buttonName}</a>
+                        `;
+                    } else {
+                        bottomControlsHtml = `
+                            <span class="no-button-title">${item.title}</span>
+                        `;
+                    }
+
+                    itemDiv.innerHTML = `
+                        <video src="${videoSrc}" poster="https://via.placeholder.com/400x700/000000/FFFFFF?text=${item.title.replace(' ', '+')}"></video>
+                        <div class="main-play-center"><i class="fas fa-play"></i></div>
+                        <div class="controls-overlay">
+                            <div class="video-title-display">${item.title}</div>
+                            <div class="timeline-container">
+                                <span class="current-time">0:00</span>
+                                <input type="range" class="timeline" value="0">
+                                <span class="total-time">0:00</span>
+                            </div>
+                            <div class="bottom-controls">
+                                <button class="control-button sound-button"><i class="fas fa-volume-up"></i></button>
+                                ${bottomControlsHtml}
+                                <button class="control-button fullscreen-button"><i class="fas fa-expand"></i></button>
+                            </div>
+                        </div>
+                    `;
+                } else if (item.type === 'ad') {
+                     let adContent = '';
+                    if (item.adType === 'video') {
+                        const adSrc = item.file ? URL.createObjectURL(item.file) : item.src;
+                        adContent = `<video src="${adSrc}" autoplay muted loop></video>`;
+                    } else if (item.adType === 'image') {
+                        const adSrc = item.file ? URL.createObjectURL(item.file) : item.src;
+                        adContent = `<img src="${adSrc}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+                    } else if (item.adType === 'html') {
+                        adContent = `<div style="padding: 20px;">${item.src}</div>`;
+                    }
+
+                    itemDiv.innerHTML = `
+                        <div class="ad-content">
+                            ${adContent}
+                        </div>
+                        <div class="controls-overlay">
+                            <div class="video-title-display">Реклама: ${item.title}</div>
+                            <div class="timeline-container">
+                                <span class="current-time">0:00</span>
+                                <input type="range" class="timeline" value="0" disabled>
+                                <span class="total-time">0:00</span>
+                            </div>
+                            <div class="bottom-controls">
+                                <button class="control-button sound-button"><i class="fas fa-volume-up"></i></button>
+                                <a href="${item.buttonLink}" target="_blank" class="look-now-button">${item.buttonName}</a>
+                                <button class="control-button fullscreen-button"><i class="fas fa-expand"></i></button>
+                            </div>
+                        </div>
+                    `;
+                }
+                playerContainer.appendChild(itemDiv);
+            });
+            initializeVideoEventListeners();
+        }
+
+        // Инициализация событий
+        function initializeVideoEventListeners() {
+            const videoItems = document.querySelectorAll('.video-item');
+            const videos = document.querySelectorAll('.video-item video');
+            const playCenterButtons = document.querySelectorAll('.video-item .main-play-center');
+            const timelines = document.querySelectorAll('.video-item .timeline');
+            const currentTimes = document.querySelectorAll('.video-item .current-time');
+            const totalTimes = document.querySelectorAll('.video-item .total-time');
+            const soundButtons = document.querySelectorAll('.video-item .sound-button');
+            const fullscreenButtons = document.querySelectorAll('.video-item .fullscreen-button');
+            let currentVideoIndex = 0;
+
+            const playVideo = (index) => {
+                const videoElement = videos[index];
+                if (videoElement) {
+                    videoElement.play();
+                    playCenterButtons[index].style.opacity = '0';
+                    playCenterButtons[index].querySelector('i').classList.remove('fa-play');
+                    playCenterButtons[index].querySelector('i').classList.add('fa-pause');
+                }
+            };
+            const pauseVideo = (index) => {
+                const videoElement = videos[index];
+                if (videoElement) {
+                    videoElement.pause();
+                    playCenterButtons[index].style.opacity = '1';
+                    playCenterButtons[index].querySelector('i').classList.remove('fa-pause');
+                    playCenterButtons[index].querySelector('i').classList.add('fa-play');
+                }
+            };
+
+            playerContainer.addEventListener('scroll', () => {
+                const videoHeight = window.innerHeight;
+                const scrollY = playerContainer.scrollTop;
+                const newIndex = Math.round(scrollY / videoHeight);
+
+                if (newIndex !== currentVideoIndex) {
+                    if (videos[currentVideoIndex]) pauseVideo(currentVideoIndex);
+                    currentVideoIndex = newIndex;
+                    if (videos[currentVideoIndex]) playVideo(currentVideoIndex);
+                }
+            });
+
+            videos.forEach((video, index) => {
+                const mainPlayCenter = playCenterButtons[index];
+                const timeline = timelines[index];
+                const currentTimeEl = currentTimes[index];
+                const totalTimeEl = totalTimes[index];
+                const soundBtn = soundButtons[index];
+                const fullscreenBtn = fullscreenButtons[index];
+
+                mainPlayCenter.addEventListener('click', () => video.paused ? playVideo(index) : pauseVideo(index));
+                video.addEventListener('click', () => video.paused ? playVideo(index) : pauseVideo(index));
+                video.addEventListener('timeupdate', () => updateTimeDisplay(video, timeline, currentTimeEl, totalTimeEl));
+                video.addEventListener('loadedmetadata', () => updateTimeDisplay(video, timeline, currentTimeEl, totalTimeEl));
+                timeline.addEventListener('input', () => video.currentTime = (timeline.value / 100) * video.duration);
+                soundBtn.addEventListener('click', () => {
+                    video.muted = !video.muted;
+                    soundBtn.innerHTML = video.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+                });
+                fullscreenBtn.addEventListener('click', () => {
+                    if (document.fullscreenElement) document.exitFullscreen();
+                    else playerContainer.requestFullscreen();
+                });
+            });
+
+            if (videos.length > 0) playVideo(0);
+        }
+
+        function updateTimeDisplay(video, timeline, currentTimeEl, totalTimeEl) {
+            const formatTime = (time) => {
+                if (isNaN(time)) return '0:00';
+                const minutes = Math.floor(time / 60);
+                const seconds = Math.floor(time % 60);
+                return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            };
+            currentTimeEl.textContent = formatTime(video.currentTime);
+            totalTimeEl.textContent = formatTime(video.duration);
+            timeline.value = (video.currentTime / video.duration) * 100;
+        }
+        
+        // --- Логика модальных окон профиля ---
+        profileIcon.addEventListener('click', () => {
+            roleSelectionModal.style.display = 'flex';
+        });
+
+        userRoleBtn.addEventListener('click', () => {
+            roleSelectionModal.style.display = 'none';
+            userProfileModal.style.display = 'flex';
+            renderWatchHistory();
+        });
+
+        proUserRoleBtn.addEventListener('click', () => {
+            roleSelectionModal.style.display = 'none';
+            proProfileModal.style.display = 'flex';
+            renderVideoList();
+            renderAdList();
+        });
+
+        closeUserModalBtn.addEventListener('click', () => userProfileModal.style.display = 'none');
+        closeProModalBtn.addEventListener('click', () => proProfileModal.style.display = 'none');
+
+        window.addEventListener('click', (event) => {
+            if (event.target === roleSelectionModal) roleSelectionModal.style.display = 'none';
+            if (event.target === userProfileModal) userProfileModal.style.display = 'none';
+            if (event.target === proProfileModal) proProfileModal.style.display = 'none';
+        });
+
+        const mainTabs = document.querySelectorAll('#pro-profile-modal .tabs > button');
+        const mainContents = document.querySelectorAll('#pro-profile-modal .tab-content');
+        mainTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                mainTabs.forEach(t => t.classList.remove('active'));
+                mainContents.forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tabTarget).classList.add('active');
+            });
+        });
+
+        const innerTabs = document.querySelectorAll('.inner-tabs > .inner-tab-button');
+        innerTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.dataset.tabContentTarget;
+                const parentContents = tab.closest('.tab-content').querySelectorAll('.inner-tab-content');
+                const parentTabs = tab.closest('.inner-tabs').querySelectorAll('.inner-tab-button');
+                parentTabs.forEach(t => t.classList.remove('active'));
+                parentContents.forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+
+        // --- Логика добавления, редактирования, удаления ---
+        publishVideoBtn.addEventListener('click', () => {
+            const title = document.getElementById('video-title').value;
+            const videoFile = document.getElementById('video-file').files[0];
+            const buttonName = document.getElementById('button-name').value;
+            const buttonLink = document.getElementById('button-link').value;
+
+            if (title && videoFile) {
+                const newVideo = {
+                    id: Date.now(),
+                    title: title,
+                    src: null,
+                    file: videoFile,
+                    buttonName: buttonName,
+                    buttonLink: buttonLink,
+                    type: 'video'
+                };
+                videosData.push(newVideo);
+                renderVideoList();
+                renderPlayer();
+                document.getElementById('video-title').value = '';
+                document.getElementById('video-file').value = '';
+                document.getElementById('button-name').value = '';
+                document.getElementById('button-link').value = '';
+                document.querySelector('[data-tab-content-target="all-videos-content"]').click();
+            } else {
+                alert('Пожалуйста, заполните все обязательные поля');
+            }
+        });
+
+        addAdBtn.addEventListener('click', () => {
+            const type = adTypeSelect.value;
+            let description = '';
+            let subtitle = '';
+            let src = '';
+            let file = null;
+            let buttonName = '';
+            let buttonLink = '';
+
+            if (type === 'video') {
+                file = document.getElementById('ad-video-file').files[0];
+                description = document.getElementById('ad-video-description').value;
+                src = file ? null : document.getElementById('ad-video-link').value;
+                buttonName = document.getElementById('ad-video-button-text').value;
+                buttonLink = document.getElementById('ad-video-link').value;
+                subtitle = `Тип: Видео`;
+            } else if (type === 'image') {
+                file = document.getElementById('ad-image-file').files[0];
+                description = document.getElementById('ad-image-description').value;
+                src = file ? null : document.getElementById('ad-image-link').value;
+                buttonName = document.getElementById('ad-image-button-text').value;
+                buttonLink = document.getElementById('ad-image-link').value;
+                subtitle = `Тип: Изображение`;
+            } else if (type === 'html') {
+                description = document.getElementById('ad-html-code').value;
+                src = document.getElementById('ad-html-code').value;
+                subtitle = `Тип: HTML`;
+            }
+
+            if (description) {
+                const newAd = { 
+                    id: Date.now(), 
+                    title: description, 
+                    subtitle: subtitle, 
+                    type: 'ad', 
+                    adType: type, 
+                    src: src, 
+                    file: file,
+                    isActive: true, 
+                    buttonName: buttonName, 
+                    buttonLink: buttonLink 
+                };
+                adsData.push(newAd);
+                renderAdList();
+                renderPlayer();
+                document.getElementById('ad-video-description').value = '';
+                document.getElementById('ad-image-description').value = '';
+                document.getElementById('ad-html-code').value = '';
+                document.querySelector('[data-tab-content-target="all-ads-content"]').click();
+            } else {
+                alert('Пожалуйста, заполните все обязательные поля');
+            }
+        });
+
+        adTypeSelect.addEventListener('change', () => {
+            adForms.forEach(form => form.classList.remove('active'));
+            document.getElementById(`ad-form-${adTypeSelect.value}`).classList.add('active');
+        });
+
+        function renderVideoList() {
+            videoList.innerHTML = '';
+            if (videosData.length === 0) {
+                videoList.innerHTML = '<p style="text-align: center; color: #888;">Список видео пуст</p>';
+                return;
+            }
+            videosData.forEach((item, index) => {
+                const newItem = createListItem(item.title, `Кнопка: ${item.buttonName || 'Нет'}`, ['edit', 'delete'], 'video', index);
+                videoList.appendChild(newItem);
+            });
+        }
+
+        function renderAdList() {
+            adList.innerHTML = '';
+            if (adsData.length === 0) {
+                adList.innerHTML = '<p style="text-align: center; color: #888;">Список рекламы пуст</p>';
+                return;
+            }
+            adsData.forEach((item, index) => {
+                const actions = ['stop', 'edit', 'delete'];
+                const newItem = createListItem(item.title, item.subtitle, actions, 'ad', index, item.isActive);
+                adList.appendChild(newItem);
+            });
+        }
+        
+        function createListItem(title, subtitle, actions, type, index, isActive = true) {
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            if (!isActive) item.classList.add('inactive');
+            
+            item.innerHTML = `
+                <div class="list-item-info">
+                    <span class="list-item-title">${title}</span>
+                    <span class="list-item-url">${subtitle}</span>
+                </div>
+                <div class="item-actions">
+                    ${actions.map(action => {
+                        let icon = '';
+                        if (action === 'edit') icon = 'fas fa-pen';
+                        if (action === 'delete') icon = 'fas fa-trash';
+                        if (action === 'stop') icon = 'fas fa-stop-circle';
+                        return `<button data-action="${action}" data-type="${type}" data-index="${index}" class="${action === 'stop' && isActive ? 'active' : ''}"><i class="${icon}"></i></button>`;
+                    }).join('')}
+                </div>
+            `;
+            return item;
+        }
+
+        document.addEventListener('click', (event) => {
+            const target = event.target.closest('button[data-action]');
+            if (!target) return;
+
+            const action = target.dataset.action;
+            const type = target.dataset.type;
+            const index = parseInt(target.dataset.index);
+
+            if (type === 'video') {
+                if (action === 'edit') {
+                    openEditModal('video', index);
+                } else if (action === 'delete') {
+                    if (confirm(`Вы уверены, что хотите удалить видео "${videosData[index].title}"?`)) {
+                        videosData.splice(index, 1);
+                        renderVideoList();
+                        renderPlayer();
+                    }
+                }
+            } else if (type === 'ad') {
+                if (action === 'edit') {
+                    openEditModal('ad', index);
+                } else if (action === 'delete') {
+                    if (confirm(`Вы уверены, что хотите удалить рекламу "${adsData[index].title}"?`)) {
+                        adsData.splice(index, 1);
+                        renderAdList();
+                        renderPlayer();
+                    }
+                } else if (action === 'stop') {
+                    adsData[index].isActive = !adsData[index].isActive;
+                    renderAdList();
+                    renderPlayer();
+                }
+            }
+        });
+        
+        // --- Логика модального окна редактирования ---
+        function openEditModal(type, index) {
+            currentEditItem = { type, index };
+            const item = type === 'video' ? videosData[index] : adsData[index];
+            editModal.style.display = 'flex';
+            document.getElementById('edit-modal-title').textContent = type === 'video' ? 'Редактировать видео' : 'Редактировать рекламу';
+            editModalForm.innerHTML = '';
+            
+            if (type === 'video') {
+                editModalForm.innerHTML = `
+                    <div class="form-group">
+                        <label for="edit-video-title">Название видео</label>
+                        <input type="text" id="edit-video-title" value="${item.title}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-button-name">Название кнопки</label>
+                        <input type="text" id="edit-button-name" value="${item.buttonName}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-button-link">Ссылка на кнопку</label>
+                        <input type="url" id="edit-button-link" value="${item.buttonLink}">
+                    </div>
+                `;
+            } else if (type === 'ad') {
+                 editModalForm.innerHTML = `
+                    <div class="form-group">
+                        <label for="edit-ad-description">Название/описание</label>
+                        <input type="text" id="edit-ad-description" value="${item.title}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-ad-button-text">Текст кнопки (опционально)</label>
+                        <input type="text" id="edit-ad-button-text" value="${item.buttonName}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-ad-link">Ссылка на кнопку</label>
+                        <input type="url" id="edit-ad-link" value="${item.buttonLink}">
+                    </div>
+                `;
+            }
+        }
+        
+        saveEditBtn.addEventListener('click', () => {
+            const { type, index } = currentEditItem;
+            if (type === 'video') {
+                videosData[index].title = document.getElementById('edit-video-title').value;
+                videosData[index].buttonName = document.getElementById('edit-button-name').value;
+                videosData[index].buttonLink = document.getElementById('edit-button-link').value;
+                renderVideoList();
+                renderPlayer();
+            } else if (type === 'ad') {
+                adsData[index].title = document.getElementById('edit-ad-description').value;
+                adsData[index].buttonName = document.getElementById('edit-ad-button-text').value;
+                adsData[index].buttonLink = document.getElementById('edit-ad-link').value;
+                renderAdList();
+                renderPlayer();
+            }
+            editModal.style.display = 'none';
+        });
+
+        closeEditModalBtn.addEventListener('click', () => {
+            editModal.style.display = 'none';
+        });
+
+        // --- Логика истории просмотров ---
+        function renderWatchHistory() {
+            watchHistoryList.innerHTML = '';
+            if (historyData.length === 0) {
+                 watchHistoryList.innerHTML = '<p style="text-align: center; color: #888;">История просмотра пуста</p>';
+                 return;
+            }
+            historyData.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    <img src="${item.thumbnail}" alt="Thumbnail">
+                    <div class="history-item-info">
+                        <span class="history-item-title">${item.title}</span>
+                    </div>
+                `;
+                watchHistoryList.appendChild(historyItem);
+            });
+        }
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPlayer();
+        });
+    </script>
 </body>
 </html>
